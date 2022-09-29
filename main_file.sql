@@ -8,6 +8,7 @@ customer_id INT NOT NULL,
 order_date DATE,
 store_id SMALLINT
 );
+DROP TABLE sales_fact;
 
 -- creating order_product_mapping
 CREATE TABLE order_product_mapping(
@@ -45,8 +46,7 @@ state VARCHAR(20)
 -- adding foreign key constraint on sales_fact table to order_product_mapping
 
 ALTER TABLE sales_fact 
-ADD CONSTRAINT order_id_fn
-FOREIGN KEY (order_id) REFERENCES order_product_mapping(order_id);
+ADD FOREIGN KEY (order_id) REFERENCES order_product_mapping(order_id);
 
 -- adding foreign key constraint on order_product_mappin to product_info
 ALTER TABLE order_product_mapping
@@ -59,6 +59,10 @@ ADD FOREIGN KEY (order_id)  REFERENCES customer_info (customer_id);
 -- adding foreign key constraint on sales_fact table to branch_details
 ALTER TABLE sales_fact 
 ADD FOREIGN KEY (store_id) REFERENCES branch_details(store_id);
+
+-- adding foreign key constraint on sales_fact table to customer_info
+ALTER TABLE sales_fact
+ADD FOREIGN KEY (customer_id) REFERENCES customer_info(customer_id);
 
 
 
@@ -1354,6 +1358,7 @@ VALUES
 (1549, '4b18', 6),
 (1549, '3128', 8);
 
+
 -- inserting values into sales_fact
 INSERT INTO sales_fact
 VALUES
@@ -2011,6 +2016,53 @@ VALUES
 (199, 'Mahmood', 'Gola', 'male', 'mahmola@gmail.com'),
 (200, 'Fakaruddin', 'Tripathi', 'male', 'fakarthi@gmail.com');
 
+select * from sales_fact;
+select * from branch_details;
+select * from customer_info;
+select * from product_info;
+select * from order_product_mapping;
 
+-- What query will you write to find the number of transactions involving male customers
+select count(order_id) from sales_fact where customer_id in (select customer_id from customer_info where gender = 'male');
 
+-- Write the query to find the number of customers who placed an order from more than one store.
 
+select count(customer_id) from (select customer_id, count(distinct store_id) as store_count from sales_fact group by customer_id having store_count> 1) as a;
+
+SELECT COUNT(customer_id)
+FROM(SELECT customer_id, COUNT(DISTINCT store_id) AS store_count
+  FROM sales_fact
+  GROUP BY customer_id
+  HAVING COUNT(DISTINCT store_id) >1) AS a;
+  
+  -- Write the query to find the city with the highest number of orders, along with the number of orders.
+ SELECT city FROM branch_details WHERE store_id IN (SELECT store_id from sales_fact);
+ select order_id, store_id from sales_fact;
+ select count(store_id), city from branch_details group by city;
+ select count(sales_fact.order_id) , branch_details.city 
+ from sales_fact
+ inner join
+ branch_details
+ on sales_fact.store_id = branch_details.store_id
+ group by branch_details.city;
+
+SELECT  city, order_count
+FROM  (SELECT     city, COUNT(DISTINCT order_id) AS order_count
+   FROM sales_fact AS fact
+   INNER JOIN branch_details AS branch
+   ON fact.store_id =branch.store_id
+   GROUP BY city
+   ORDER BY COUNT(DISTINCT order_id) DESC) AS a
+LIMIT 1;
+
+-- Write the query to find the area that recorded the highest sales in terms of sales amount, along with its sales amount.
+
+-- Write the query to find the state with the highest number of customers.
+select state from 
+(select state, count(distinct customer_id) as cust_count from 
+branch_details as branch
+inner join
+sales_fact as sales 
+on branch.store_id = sales.store_id
+group by state
+order by cust_count desc) as a limit 1;
