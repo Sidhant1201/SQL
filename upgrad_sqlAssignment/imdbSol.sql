@@ -358,30 +358,44 @@ ORDER BY movie_count DESC;
 +---------------+-------------------+---------------------+*/
 -- Type your code below:
 
-
-
-
-
-
+SELECT 
+    m.title, r.avg_rating, g.genre
+FROM
+    movie AS m
+        INNER JOIN
+    ratings AS r ON m.id = r.movie_id
+        INNER JOIN
+    genre AS g 
+    ON m.id = g.movie_id
+WHERE r.avg_rating > 8 and m.title LIKE 'The%';
+	
 
 
 
 -- You should also try your hand at median rating and check whether the ‘median rating’ column gives any significant insights.
 -- Q16. Of the movies released between 1 April 2018 and 1 April 2019, how many were given a median rating of 8?
 -- Type your code below:
-
-
-
-
-
-
-
+SELECT count(m.id)
+FROM movie as m
+	inner join
+    ratings as r
+    ON m.id = r.movie_id
+WHERE m.date_published> '2018-04-01' and m.date_published < '2019-04-01' and r.median_rating = 8 ;
 
 
 -- Once again, try to solve the problem given below.
 -- Q17. Do German movies get more votes than Italian movies? 
 -- Hint: Here you have to find the total number of votes for both German and Italian movies.
 -- Type your code below:
+
+SELECT m.country, 
+	   sum(r.total_votes) as total_votes
+	FROM 
+    movie as m 
+    inner join 
+    ratings as r
+    ON m.id = r.movie_id
+Group by m.country;
 
 
 
@@ -411,8 +425,12 @@ Let’s begin by searching for null values in the tables.*/
 +---------------+-------------------+---------------------+----------------------+*/
 -- Type your code below:
 
-
-
+select count(if(name is null, 1, NULL)) as name_nulls,
+	   count(if(height is null, 1, NULL)) as height_nulls,
+       count(if(date_of_birth is null, 1, NULL)) as date_of_birth_nulls,
+       count(if(known_for_movies is null, 1, NULL)) as known_for_movies_nulls
+ from names;
+ 
 
 
 
@@ -435,7 +453,34 @@ Let’s find out the top three directors in the top three genres who can be hire
 +---------------+-------------------+ */
 -- Type your code below:
 
-
+	SELECT g.genre, 
+		   count(g.movie_id),
+		   RANK() OVER(ORDER BY count(g.movie_id) DESC) as rank_genre
+		FROM genre as g
+		inner join 
+		ratings as r 
+	ON g.movie_id = r.movie_id
+	where r.avg_rating > 8 
+	group by g.genre;
+    
+    
+SELECT name,
+	   count(r.movie_id) as movie_count
+FROM  
+      ratings as r
+      inner join 
+      director_mapping as d
+      on r.movie_id = d.movie_id
+       inner join
+      names as n
+      ON n.id = d.name_id
+      inner join 
+      genre as g
+      on r.movie_id = g.movie_id
+	WHERE avg_rating > 8 and genre = 'Drama'+'Action'+'Comedy'
+    GROUP BY n.name
+    Order by movie_count desc limit 3 ;
+    
 
 
 
@@ -457,12 +502,20 @@ Now, let’s find out the top two actors.*/
 +---------------+-------------------+ */
 -- Type your code below:
 
-
-
-
-
-
-
+SELECT 
+    name AS actor_name, COUNT(r.movie_id) AS movie_count
+FROM
+    ratings AS r
+        INNER JOIN
+    role_mapping AS rm ON r.movie_id = rm.movie_id
+        INNER JOIN
+    names AS n ON rm.name_id = n.id
+WHERE
+    r.median_rating >= 8
+        AND rm.category = 'Actor'
+GROUP BY n.name
+ORDER BY movie_count DESC
+LIMIT 2;
 
 /* Have you find your favourite actor 'Mohanlal' in the list. If no, please check your code again. 
 RSVP Movies plans to partner with other global production houses. 
@@ -478,10 +531,21 @@ Let’s find out the top three production houses in the world.*/
 |	.				|		.			|			.		  |
 +-------------------+-------------------+---------------------+*/
 -- Type your code below:
-
-
-
-
+SELECT production_company, 
+	   vote_count,
+       prod_comp_rank
+FROM
+(
+SELECT m.production_company,
+	   r.total_votes as vote_count,
+       rank() over(order by r.total_votes DESC) as prod_comp_rank 
+FROM movie as m 
+	 inner join 
+     ratings as r
+     on m.id = r.movie_id
+GROUP BY m.production_company
+Order by prod_comp_rank
+) as topProd where prod_comp_rank <=3;
 
 
 
@@ -695,3 +759,5 @@ Format:
 
 
 
+
+    
