@@ -573,13 +573,40 @@ Let’s find who these actors could be.*/
 |		.		|			.		|	       .		  |	   .	    		 |		.	       |
 +---------------+-------------------+---------------------+----------------------+-----------------+*/
 -- Type your code below:
+	  
+SELECT a.name as actor_name, c.total_votes, COUNT(c.movie_id) as movie_count,c.avg_rating as actor_avg_rating,
+RANK() OVER( PARTITION BY
+            d.category = 'actor'
+            ORDER BY 
+            c.avg_rating DESC
+            ) actor_rank
+FROM names a, movie b, ratings c, role_mapping d    
+where b.country = 'INDIA'
+       and b.id = c.movie_id
+       and b.id= d.movie_id
+       and a.id = d.name_id
+    
+group by actor_name
+having count(d.movie_id) >= 5
+order by actor_avg_rating desc
+;
 
-
-
-
-
-
-
+SELECT a.name as actor_name, c.total_votes, COUNT(c.movie_id) as movie_count,c.avg_rating as actor_avg_rating,
+RANK() OVER( PARTITION BY
+            d.category = 'actor'
+            ORDER BY 
+            c.avg_rating DESC
+            ) actor_rank
+FROM names a, movie b, ratings c, role_mapping d    
+where b.country = 'INDIA'
+       and b.id = c.movie_id
+       and b.id= d.movie_id
+       and a.id = d.name_id
+    
+group by actor_name
+having count(d.movie_id) >= 5
+order by actor_avg_rating desc
+;  
 
 
 -- Top actor is Vijay Sethupathi
@@ -598,11 +625,17 @@ Let’s find who these actors could be.*/
 +---------------+-------------------+---------------------+----------------------+-----------------+*/
 -- Type your code below:
 
-
-
-
-
-
+SELECT n.name as actor_name, r.total_votes as total_votes, count(r.movie_id) as movie_count, sum(r.avg_rating)/count(r.movie_id) as avg_rating,
+	   RANK() OVER( Order by sum(r.avg_rating)/count(r.movie_id) DESC, r.total_votes DESC) as actress_rank
+FROM names as n, movie as m,  ratings as r, role_mapping as rm
+WHERE m.country= 'India'
+	  and rm.category = 'actress'
+	  and m.id = rm.movie_id
+      and rm.name_id= n.id
+      and rm.movie_id = r.movie_id
+GROUP BY n.name 
+HAVING movie_count >= 3
+Order by avg_rating desc;
 
 
 
@@ -619,7 +652,21 @@ Now let us divide all the thriller movies in the following categories and find o
 --------------------------------------------------------------------------------------------*/
 -- Type your code below:
 
-
+SELECT 
+    g.genre,
+    r.avg_rating,
+    CASE
+        WHEN r.avg_rating > 8 THEN 'Superhit movies'
+        WHEN r.avg_rating BETWEEN 7 AND 8 THEN 'hit movies'
+        WHEN r.avg_rating BETWEEN 5 AND 7 THEN 'one-time watch'
+        ELSE 'Flop movies'
+    END AS movie_type
+FROM
+    genre AS g
+        INNER JOIN
+    ratings AS r ON g.movie_id = r.movie_id
+WHERE
+    g.genre = 'Thriller';
 
 
 
@@ -644,6 +691,18 @@ Now, you will perform some tasks that will give you a broader understanding of t
 |		.		|			.		|	       .		  |	   .	    		 |
 +---------------+-------------------+---------------------+----------------------+*/
 -- Type your code below:
+
+SELECT genre,
+    ROUND(AVG(duration),2) AS avg_duration,
+    SUM(ROUND(AVG(duration),2)) OVER(ORDER BY genre ROWS UNBOUNDED 
+    PRECEDING) AS running_total_duration,
+    AVG(ROUND(AVG(duration),2)) OVER(ORDER BY genre ROWS 10 PRECEDING) 
+    AS moving_avg_duration
+FROM movie AS m 
+INNER JOIN genre AS g 
+ON m.id= g.movie_id
+GROUP BY genre
+ORDER BY genre;
 
 
 
@@ -674,11 +733,9 @@ Now, you will perform some tasks that will give you a broader understanding of t
 
 -- Top 3 Genres based on most number of movies
 
-
-
-
-
-
+SELECT g.genre, m.year, m.title, m.worlwide_gross_income
+FROM genre g, movie m
+WHERE g.movie_id = m.id and g.genre in (Select genre from genre  group by genre order by count(movie_id) DESC limit 3);
 
 
 
@@ -695,11 +752,13 @@ Now, you will perform some tasks that will give you a broader understanding of t
 +-------------------+-------------------+---------------------+*/
 -- Type your code below:
 
-
-
-
-
-
+Select * from movie;
+SELECT m.production_company ,count(m.id) as movie_count , m.languages 
+from movie m, ratings r 
+where languages like '%,%' and r.median_rating >= 8
+	  and m.id = r.movie_id
+group by m.production_company
+Order by movie_count desc;
 
 
 -- Multilingual is the important piece in the above question. It was created using POSITION(',' IN languages)>0 logic
@@ -717,8 +776,18 @@ Now, you will perform some tasks that will give you a broader understanding of t
 +---------------+-------------------+---------------------+----------------------+-----------------+*/
 -- Type your code below:
 
-
-
+SELECT n.name as actress_name, r.total_votes, count(r.movie_id) as movie_count, avg(r.avg_rating) as actress_avg_rating,
+	   dense_Rank() Over( partition by rm.category = 'actress' order by count(r.movie_id)  desc, total_votes desc) as actress_rank 
+from names n, ratings r, role_mapping rm, genre g
+where r.avg_rating > 8 and 
+      rm.category = 'actress' and 
+      g.genre = 'drama' and
+	  n.id = rm.name_id and
+      r.movie_id = rm.movie_id and
+      rm.movie_id = g.movie_id 
+GROUP BY n.name 
+Order by actress_rank asc
+limit 3;
 
 
 
@@ -754,9 +823,15 @@ Format:
 -- Type you code below:
 
 
-
-
-
+SELECT d.name_id as director_id, n.name as director_name,count(d.movie_id) as number_of_movies, sum( m.duration)/(60*24) as avg_inter_movie_days,
+	    r.avg_rating, sum(r.total_votes) as total_votes, min(r.avg_rating) as min_rating, max(r.avg_rating) as max_rating,
+       sum(m.duration) as total_duration
+from movie m, ratings r, director_mapping d, names n
+where m.id = d.movie_id and
+	  n.id = d.name_id and 
+      d.movie_id = r.movie_id
+group by n.name
+order by number_of_movies desc;
 
 
 
